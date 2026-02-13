@@ -1,0 +1,92 @@
+# ============================================
+# CLASSIFICATION & EVALUATION X-RAY COVID
+# MAHASISWA 3 - SIAP COPY
+# ============================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import (
+    confusion_matrix,
+    classification_report,
+    roc_curve,
+    auc
+)
+
+# --------------------------------------------
+# LOAD DATA (OUTPUT MAHASISWA 2)
+# --------------------------------------------
+DATA_PATH = "feature_glcm_xray.csv"
+df = pd.read_csv(DATA_PATH)
+
+# --------------------------------------------
+# PISAHKAN FITUR DAN LABEL
+# --------------------------------------------
+X = df.drop(columns=["filename", "label"])
+y = df["label"]
+
+# Encode label (Rusak=1, Tidak Rusak=0)
+encoder = LabelEncoder()
+y = encoder.fit_transform(y)
+
+# --------------------------------------------
+# TRAIN TEST SPLIT
+# --------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
+)
+
+# --------------------------------------------
+# NORMALISASI DATA
+# --------------------------------------------
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# --------------------------------------------
+# MODEL SVM
+# --------------------------------------------
+model = SVC(kernel="rbf", probability=True)
+model.fit(X_train, y_train)
+
+# --------------------------------------------
+# PREDIKSI
+# --------------------------------------------
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+# --------------------------------------------
+# CONFUSION MATRIX
+# --------------------------------------------
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:")
+print(cm)
+
+# --------------------------------------------
+# CLASSIFICATION REPORT
+# --------------------------------------------
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred,
+      target_names=["Tidak Rusak", "Rusak"]))
+
+# --------------------------------------------
+# ROC CURVE
+# --------------------------------------------
+fpr, tpr, _ = roc_curve(y_test, y_prob)
+roc_auc = auc(fpr, tpr)
+
+plt.figure()
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle="--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - SVM Classification")
+plt.legend(loc="lower right")
+plt.grid()
+plt.show()
+
+print("✅ Classification & Evaluation SELESAI")
