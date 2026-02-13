@@ -1,0 +1,111 @@
+# ============================================
+# FEATURE EXTRACTION GLCM X-RAY COVID
+# MAHASISWA 2 - SIAP COPY
+# ============================================
+
+import cv2
+import numpy as np
+import os
+import pandas as pd
+from skimage.feature import graycomatrix, graycoprops
+
+# --------------------------------------------
+# PATH DATASET (OUTPUT MAHASISWA 1)
+# --------------------------------------------
+DATASET_PATH = "output_segmentation"
+CLASSES = ["covid", "normal"]
+
+# --------------------------------------------
+# FUNGSI EKSTRAKSI FITUR GLCM
+# --------------------------------------------
+def extract_glcm_features(gray_img):
+    gray_img = gray_img.astype(np.uint8)
+
+    glcm = graycomatrix(
+        gray_img,
+        distances=[1],
+        angles=[0],
+        levels=256,
+        symmetric=True,
+        normed=True
+    )
+
+    features = {
+        "contrast": graycoprops(glcm, "contrast")[0, 0],
+        "dissimilarity": graycoprops(glcm, "dissimilarity")[0, 0],
+        "homogeneity": graycoprops(glcm, "homogeneity")[0, 0],
+        "energy": graycoprops(glcm, "energy")[0, 0],
+        "correlation": graycoprops(glcm, "correlation")[0, 0],
+        "ASM": graycoprops(glcm, "ASM")[0, 0],
+    }
+
+    return features
+
+# --------------------------------------------
+# (OPSIONAL) FITUR BENTUK
+# --------------------------------------------
+def extract_shape_features(gray_img):
+    _, binary = cv2.threshold(
+        gray_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    contours, _ = cv2.findContours(
+        binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if len(contours) == 0:
+        return {"area": 0, "perimeter": 0}
+
+    largest = max(contours, key=cv2.contourArea)
+
+    area = cv2.contourArea(largest)
+    perimeter = cv2.arcLength(largest, True)
+
+    return {
+        "area": area,
+        "perimeter": perimeter
+    }
+
+# --------------------------------------------
+# PIPELINE UTAMA FEATURE EXTRACTION
+# --------------------------------------------
+data = []
+
+for cls in CLASSES:
+    folder = os.path.join(DATASET_PATH, cls)
+    label = "Rusak" if cls == "covid" else "Tidak Rusak"
+
+    for file in os.listdir(folder):
+        img_path = os.path.join(folder, file)
+
+        if not os.path.isfile(img_path) or file.startswith('.'):
+            continue
+
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+
+        glcm_features = extract_glcm_features(img)
+        shape_features = extract_shape_features(img)
+
+        row = {
+            "filename": file,
+            "label": label,
+            **glcm_features,
+            **shape_features
+        }
+
+        data.append(row)
+
+# --------------------------------------------
+# SIMPAN KE CSV & EXCEL
+# --------------------------------------------
+df = pd.DataFrame(data)
+
+df.to_csv("feature_glcm_xray.csv", index=False)
+df.to_excel("feature_glcm_xray.xlsx", index=False)
+
+print("✅ Feature Extraction SELESAI")
+print("📄 File tersimpan:")
+print("- feature_glcm_xray.csv")
+print("- feature_glcm_xray.xlsx")
