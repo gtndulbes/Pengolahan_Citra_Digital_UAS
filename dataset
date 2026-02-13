@@ -1,0 +1,9 @@
+import os
+
+DATASET_PATH = "dataset"
+CLASSES = ["covid", "normal"]
+
+for cls in CLASSES:
+    os.makedirs(os.path.join(DATASET_PATH, cls), exist_ok=True)
+
+print(f"✅ Direktori '{DATASET_PATH}/covid' dan '{DATASET_PATH}/normal' telah dibuat.")
